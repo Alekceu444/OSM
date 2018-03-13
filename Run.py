@@ -5,7 +5,7 @@ tree = etree.parse('city.osm')
 #Строим список смежности
 map={}
 for node in tree.iterfind('/way/tag[@k="highway"]'): # поиск элементов
-    if (node.get('v') not in ["path","pedestrian","footway","road"]):
+    if (node.get('v') not in ["path","pedestrian","footway","road","service","track","cycleway"]):
         for nodes in node.iterfind('../tag'):
             if nodes.get('k')=='oneway' and nodes.get('v')=='yes':
                 adder=nodes
@@ -82,7 +82,7 @@ for node in tree.iterfind('/node'):
             maxlon=float(node.get('lon'))
         if float(node.get('lon'))<minlon:
             minlon=float(node.get('lon'))
-const=4000.0
+const=3000.0
 scaleLat=(maxlat-minlat)/const
 scaleLon=(maxlon-minlon)/const
 svgGraph = svgwrite.Drawing('Graph.svg', size=(str(const)+'px', str(const)+'px'))
