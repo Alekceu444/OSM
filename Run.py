@@ -6,11 +6,11 @@ from lxml import etree
 import time
 
 tree = etree.parse('city.osm')
-timeDey=0;
-timeLevit=0;
-timeACheb=0;
-timeAEucl=0;
-timeAManh=0;
+timeDey = 0;
+timeLevit = 0;
+timeACheb = 0;
+timeAEucl = 0;
+timeAManh = 0;
 # Строим список смежности
 map = {}
 maxlat = 0.0
@@ -159,7 +159,7 @@ mapfin = {0: [pointid, 0, -1]}
 mapDey = {pointid: 0}
 lim = 0
 k = 1
-starttime=time.time()
+starttime = time.time()
 while lim != len(mapfin):
     for i in map[mapfin[lim][0]]:
         dist = ((float(mapCoord[mapfin[lim][0]][0]) - float(mapCoord[i][0])) ** 2 + (
@@ -184,11 +184,11 @@ for i in hospid:
     else:
         mindistance.append(1000)
         l += 1
-distpoint=[55,83]
-timeDey=time.time()-starttime;
-print("Время дейкстра:",timeDey)
-s=[55,83+mindistance[minnum]]
-print("Time spend to arrive dey:",distance(distpoint,s)/40)
+distpoint = [55, 83]
+timeDey = time.time() - starttime;
+print("Время дейкстра:", timeDey)
+s = [55, 83 + mindistance[minnum]]
+print("Time spend to arrive dey:", distance(distpoint, s) / 40)
 # создаем svg
 const = 3000.0
 scaleLat = (maxlat - minlat) / const
@@ -260,6 +260,7 @@ for i in m2:
     m2coord[i] = list()
     m2coord[i] = map[i].copy()
 
+
 def levit(m2, mapCoord, start):
     dist = {k: None for k in mapCoord.keys()}
     dist[start] = 0
@@ -271,7 +272,7 @@ def levit(m2, mapCoord, start):
         id[v] = 1
         for successor in m2[v]:
             new_dist = float(dist[v]) + ((float(mapCoord[v][1]) - float(mapCoord[successor][1])) ** 2 + (
-                    float(mapCoord[v][0]) - float(mapCoord[successor][0])) ** 2) ** 1 / 2
+                    float(mapCoord[v][0]) - float(mapCoord[successor][0])) ** 2) ** 0.5
             if dist[successor] is None or new_dist < dist[successor]:
                 dist[successor] = new_dist
                 if id[successor] == 0:
@@ -282,7 +283,8 @@ def levit(m2, mapCoord, start):
                 id[successor] = 1
     return dist, prev
 
-starttime=time.time()
+
+starttime = time.time()
 dist, prev = levit(m2coord, mapCoord, pointid)
 lm = 0
 m = 1000
@@ -291,10 +293,9 @@ for i in hospid:
         lim = lm
         m = dist[i]
     lm = +1
-timeLevit=time.time()-starttime
-print("Время левита:",timeLevit)
-s=[55,83+m]
-print("Time spend to arrive levit:",distance(distpoint,s)/40)
+timeLevit = time.time() - starttime
+print("Время левита:", timeLevit)
+print("Time spend to arrive levit:", distance(distpoint, s) / 40)
 # Рисуем
 svgGraphLevit = svgwrite.Drawing('GraphLevit.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
@@ -399,23 +400,24 @@ def a(start, end, list, mapCoord, heuristic='euclidean'):
 
     return {k: 100000 for k in mapCoord.keys()}, {}
 
-#Manhattan
+
+# Manhattan
 minrange = 1000
 h = []
 l = 0
 lim = -1
-starttime=time.time()
+starttime = time.time()
 for i in hospid:
-    f, aj = a(pointid, i, m2coord, mapCoord,'manhattan')
+    f, aj = a(pointid, i, m2coord, mapCoord, 'manhattan')
     h = h + aj
     if f < minrange:
         lim = l
         minrange = f
     l += 1
-timeAManh=time.time()-starttime
+timeAManh = time.time() - starttime
 print("Время A* манхет:", timeAManh)
-s=[55,83+minrange]
-print("Time spend to arrive Amanh:",distance(distpoint,s)/40)
+s = [55, 83 + minrange]
+print("Time spend to arrive Amanh:", distance(distpoint, s) / 40)
 # Рисуем
 svgGraphAManh = svgwrite.Drawing('GraphAManh.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
@@ -471,12 +473,12 @@ for i in range(len(hospid)):
         k += 1
 svgGraphAManh.save()
 
-#Euclide
+# Euclide
 minrange = 1000
 h = []
 l = 0
 lim = -1
-starttime=time.time()
+starttime = time.time()
 for i in hospid:
     f, aj = a(pointid, i, m2coord, mapCoord)
     h = h + aj
@@ -484,10 +486,10 @@ for i in hospid:
         lim = l
         minrange = f
     l += 1
-timeAEucl=time.time()-starttime
+timeAEucl = time.time() - starttime
 print("Время A* евкл:", timeAEucl)
-s=[55,83+minrange]
-print("Time spend to arrive AEucl:",distance(distpoint,s)/40)
+s = [55, 83 + minrange]
+print("Time spend to arrive AEucl:", distance(distpoint, s) / 40)
 # Рисуем
 svgGraphAEucl = svgwrite.Drawing('GraphAEucl.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
@@ -543,13 +545,12 @@ for i in range(len(hospid)):
         k += 1
 svgGraphAEucl.save()
 
-
-#Chebyshev
+# Chebyshev
 minrange = 1000
 h = []
 l = 0
 lim = -1
-starttime=time.time()
+starttime = time.time()
 for i in hospid:
     f, aj = a(pointid, i, m2coord, mapCoord)
     h = h + aj
@@ -557,10 +558,10 @@ for i in hospid:
         lim = l
         minrange = f
     l += 1
-timeACheb=time.time()-starttime
+timeACheb = time.time() - starttime
 print("Время A* чебыш:", timeACheb)
-s=[55,83+minrange]
-print("Time spend to arrive ACheb:",distance(distpoint,s)/40)
+s = [55, 83 + minrange]
+print("Time spend to arrive ACheb:", distance(distpoint, s) / 40)
 # Рисуем
 svgGraphACheb = svgwrite.Drawing('GraphACheb.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
