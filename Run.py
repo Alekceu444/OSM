@@ -3,9 +3,14 @@ from collections import deque
 
 import svgwrite
 from lxml import etree
-import sys
+import time
 
 tree = etree.parse('city.osm')
+timeDey=0;
+timeLevit=0;
+timeACheb=0;
+timeAEucl=0;
+timeAManh=0;
 # Строим список смежности
 map = {}
 maxlat = 0.0
@@ -79,9 +84,9 @@ for node in tree.iterfind('/way/tag[@k="highway"]'):  # поиск элемен�
                                 map[nd.get('ref')].add(adder.get('ref'))
                                 adder = nd
 ##Вывод матрицы смежности
-with open('listcsv.csv', 'w') as printer:
+'''with open('listcsv.csv', 'w') as printer:
     out = csv.writer(printer)
-    out.writerows(map.items())
+    out.writerows(map.items())'''
 '''#Строим матрицу смежности
 with open('matrix.csv', 'w') as printer:
     out = csv.writer(printer)
@@ -144,8 +149,8 @@ for j in mapCoord:
 
 def distance(point1, point2):
     import math
-    l = math.acos(math.sin(float(point1[0])) * math.sin(-1 * float(point2[0])) + math.cos(float(point1[0])) * math.cos(
-        -1 * float(point2[0])) * math.cos(abs(float(point1[1]) - float(point2[1]))))
+    l = math.acos(math.sin(float(point1[0])) * math.sin(float(point2[0])) + math.cos(float(point1[0])) * math.cos(
+        float(point2[0])) * math.cos(float(point1[1]) - float(point2[1])))
     return l * 6371
 
 
@@ -154,6 +159,7 @@ mapfin = {0: [pointid, 0, -1]}
 mapDey = {pointid: 0}
 lim = 0
 k = 1
+starttime=time.time()
 while lim != len(mapfin):
     for i in map[mapfin[lim][0]]:
         dist = ((float(mapCoord[mapfin[lim][0]][0]) - float(mapCoord[i][0])) ** 2 + (
@@ -178,7 +184,11 @@ for i in hospid:
     else:
         mindistance.append(1000)
         l += 1
-
+distpoint=[55,83]
+timeDey=time.time()-starttime;
+print("Время дейкстра:",timeDey)
+s=[55,83+mindistance[minnum]]
+print("Time spend to arrive dey:",distance(distpoint,s)/40)
 # создаем svg
 const = 3000.0
 scaleLat = (maxlat - minlat) / const
@@ -236,9 +246,6 @@ for i in range(len(hospid)):
             g = mapDey[l]
 svgGraph.save()
 # Левита
-m0 = {0: [pointid, 0, -1]}
-m11 = list()
-m12 = list()
 m2 = list()
 m2.append(pointid)
 l = 0
@@ -252,7 +259,6 @@ m2coord = {}
 for i in m2:
     m2coord[i] = list()
     m2coord[i] = map[i].copy()
-
 
 def levit(m2, mapCoord, start):
     dist = {k: None for k in mapCoord.keys()}
@@ -276,7 +282,7 @@ def levit(m2, mapCoord, start):
                 id[successor] = 1
     return dist, prev
 
-
+starttime=time.time()
 dist, prev = levit(m2coord, mapCoord, pointid)
 lm = 0
 m = 1000
@@ -285,6 +291,10 @@ for i in hospid:
         lim = lm
         m = dist[i]
     lm = +1
+timeLevit=time.time()-starttime
+print("Время левита:",timeLevit)
+s=[55,83+m]
+print("Time spend to arrive levit:",distance(distpoint,s)/40)
 # Рисуем
 svgGraphLevit = svgwrite.Drawing('GraphLevit.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
@@ -335,54 +345,273 @@ for i in range(len(hospid)):
             l = point
 svgGraphLevit.save()
 
-#A*
 
+# A*
+def euclidean(first, second):
+    return ((float(first[0]) - float(second[0])) ** 2 + (float(first[1]) - float(second[1])) ** 2) ** (1 / 2)
+
+
+def manhattan(first, second):
+    return abs(float(first[0]) - float(second[0])) + abs(float(first[1]) - float(second[1]))
+
+
+def chebyshev(first, second):
+    return max(abs(float(first[0]) - float(second[0])), abs(float(first[0]) - float(second[0])))
+
+
+def a(start, end, list, mapCoord, heuristic='euclidean'):
+    heurFunc = euclidean
+    if heuristic == 'chebyshev':
+        heurFunc = chebyshev
+    elif heuristic == 'manhattan':
+        heurFunc = manhattan
+    open = []
+    closed = []
+    g = 0
+    f = heurFunc(mapCoord[start], mapCoord[end])
+    from heapq import heappush, heappop
+    heappush(open, (f, g, [start]))
+    while open:
+        heap = heappop(open)
+        p = heap[-1]
+        g = heap[1]
+        x = p[-1]
+
+        if x in closed:
+            continue
+
+        if x == end:
+            return f, p
+
+        closed.append(x)
+
+        if not list.get(x):
+            continue
+
+        for successor in list[x]:
+            newg = g + euclidean(mapCoord[successor], mapCoord[x])
+            newf = newg + heurFunc(mapCoord[successor], mapCoord[end])
+
+            newPath = p[:]
+            newPath.append(successor)
+
+            heappush(open, (newf, newg, newPath))
+
+    return {k: 100000 for k in mapCoord.keys()}, {}
+
+#Manhattan
+minrange = 1000
+h = []
+l = 0
+lim = -1
+starttime=time.time()
+for i in hospid:
+    f, aj = a(pointid, i, m2coord, mapCoord,'manhattan')
+    h = h + aj
+    if f < minrange:
+        lim = l
+        minrange = f
+    l += 1
+timeAManh=time.time()-starttime
+print("Время A* манхет:", timeAManh)
+s=[55,83+minrange]
+print("Time spend to arrive Amanh:",distance(distpoint,s)/40)
 # Рисуем
-svgGraphA = svgwrite.Drawing('GraphA.svg', size=(str(const) + 'px', str(const) + 'px'))
+svgGraphAManh = svgwrite.Drawing('GraphAManh.svg', size=(str(const) + 'px', str(const) + 'px'))
 for dot in map:
-    svgGraphA.add(svgGraphA.circle(
+    svgGraphAManh.add(svgGraphAManh.circle(
         (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat), 2))
     for dot2 in map[dot]:
-        svgGraphA.add(svgGraphA.circle(
+        svgGraphAManh.add(svgGraphAManh.circle(
             (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
             2))
-        svgGraphA.add(svgGraphA.line(
+        svgGraphAManh.add(svgGraphAManh.line(
             (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat),
             (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
             stroke=svgwrite.rgb(0, 0, 0, '%')))
-    svgGraphA.add(svgGraphA.circle(center=(
+    svgGraphAManh.add(svgGraphAManh.circle(center=(
         const - (maxlon - float(mapCoord[pointid][1])) / scaleLon, (maxlat - float(mapCoord[pointid][0])) / scaleLat),
         r=15,
         stroke="green", stroke_width=10))
+k = 0
 for i in range(len(hospid)):
     if i == lim:
-        svgGraphLevit.add(svgGraphA.circle(center=(
+        svgGraphAManh.add(svgGraphAManh.circle(center=(
             const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
             (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
             stroke="blue", stroke_width=10))
-        l = hospid[i]
-        while prev[l] != pointid:
-            point = prev[l]
-            svgGraphA.add(svgGraphA.polyline(
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphAManh.add(svgGraphAManh.polyline(
                 ((const - (maxlon - float(mapCoord[point][1])) / scaleLon,
                   (maxlat - float(mapCoord[point][0])) / scaleLat),
                  (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
                   (maxlat - float(mapCoord[l][0])) / scaleLat)),
                 stroke="blue", stroke_width=10, fill='none'))
             l = point
+            k += 1
+        k += 1
     else:
-        svgGraphA.add(svgGraphA.circle(center=(
+        svgGraphAManh.add(svgGraphAManh.circle(center=(
             const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
             (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
             stroke="red", stroke_width=10))
-        l = hospid[i]
-        while prev[l] != pointid:
-            point = prev[l]
-            svgGraphA.add(svgGraphA.polyline((
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphAManh.add(svgGraphAManh.polyline((
                 (const - (maxlon - float(mapCoord[point][1])) / scaleLon,
                  (maxlat - float(mapCoord[point][0])) / scaleLat),
                 (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
                  (maxlat - float(mapCoord[l][0])) / scaleLat)),
                 stroke="red", stroke_width=5, fill='none'))
             l = point
-svgGraphA.save()
+            k += 1
+        k += 1
+svgGraphAManh.save()
+
+#Euclide
+minrange = 1000
+h = []
+l = 0
+lim = -1
+starttime=time.time()
+for i in hospid:
+    f, aj = a(pointid, i, m2coord, mapCoord)
+    h = h + aj
+    if f < minrange:
+        lim = l
+        minrange = f
+    l += 1
+timeAEucl=time.time()-starttime
+print("Время A* евкл:", timeAEucl)
+s=[55,83+minrange]
+print("Time spend to arrive AEucl:",distance(distpoint,s)/40)
+# Рисуем
+svgGraphAEucl = svgwrite.Drawing('GraphAEucl.svg', size=(str(const) + 'px', str(const) + 'px'))
+for dot in map:
+    svgGraphAEucl.add(svgGraphAEucl.circle(
+        (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat), 2))
+    for dot2 in map[dot]:
+        svgGraphAEucl.add(svgGraphAEucl.circle(
+            (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
+            2))
+        svgGraphAEucl.add(svgGraphAEucl.line(
+            (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat),
+            (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
+            stroke=svgwrite.rgb(0, 0, 0, '%')))
+    svgGraphAEucl.add(svgGraphAEucl.circle(center=(
+        const - (maxlon - float(mapCoord[pointid][1])) / scaleLon, (maxlat - float(mapCoord[pointid][0])) / scaleLat),
+        r=15,
+        stroke="green", stroke_width=10))
+k = 0
+for i in range(len(hospid)):
+    if i == lim:
+        svgGraphAEucl.add(svgGraphAEucl.circle(center=(
+            const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
+            (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
+            stroke="blue", stroke_width=10))
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphAEucl.add(svgGraphAEucl.polyline(
+                ((const - (maxlon - float(mapCoord[point][1])) / scaleLon,
+                  (maxlat - float(mapCoord[point][0])) / scaleLat),
+                 (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
+                  (maxlat - float(mapCoord[l][0])) / scaleLat)),
+                stroke="blue", stroke_width=10, fill='none'))
+            l = point
+            k += 1
+        k += 1
+    else:
+        svgGraphAEucl.add(svgGraphAEucl.circle(center=(
+            const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
+            (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
+            stroke="red", stroke_width=10))
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphAEucl.add(svgGraphAEucl.polyline((
+                (const - (maxlon - float(mapCoord[point][1])) / scaleLon,
+                 (maxlat - float(mapCoord[point][0])) / scaleLat),
+                (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
+                 (maxlat - float(mapCoord[l][0])) / scaleLat)),
+                stroke="red", stroke_width=5, fill='none'))
+            l = point
+            k += 1
+        k += 1
+svgGraphAEucl.save()
+
+
+#Chebyshev
+minrange = 1000
+h = []
+l = 0
+lim = -1
+starttime=time.time()
+for i in hospid:
+    f, aj = a(pointid, i, m2coord, mapCoord)
+    h = h + aj
+    if f < minrange:
+        lim = l
+        minrange = f
+    l += 1
+timeACheb=time.time()-starttime
+print("Время A* чебыш:", timeACheb)
+s=[55,83+minrange]
+print("Time spend to arrive ACheb:",distance(distpoint,s)/40)
+# Рисуем
+svgGraphACheb = svgwrite.Drawing('GraphACheb.svg', size=(str(const) + 'px', str(const) + 'px'))
+for dot in map:
+    svgGraphACheb.add(svgGraphACheb.circle(
+        (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat), 2))
+    for dot2 in map[dot]:
+        svgGraphACheb.add(svgGraphACheb.circle(
+            (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
+            2))
+        svgGraphACheb.add(svgGraphACheb.line(
+            (const - (maxlon - float(mapCoord[dot][1])) / scaleLon, (maxlat - float(mapCoord[dot][0])) / scaleLat),
+            (const - (maxlon - float(mapCoord[dot2][1])) / scaleLon, (maxlat - float(mapCoord[dot2][0])) / scaleLat),
+            stroke=svgwrite.rgb(0, 0, 0, '%')))
+    svgGraphACheb.add(svgGraphACheb.circle(center=(
+        const - (maxlon - float(mapCoord[pointid][1])) / scaleLon, (maxlat - float(mapCoord[pointid][0])) / scaleLat),
+        r=15,
+        stroke="green", stroke_width=10))
+k = 0
+for i in range(len(hospid)):
+    if i == lim:
+        svgGraphACheb.add(svgGraphACheb.circle(center=(
+            const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
+            (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
+            stroke="blue", stroke_width=10))
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphACheb.add(svgGraphACheb.polyline(
+                ((const - (maxlon - float(mapCoord[point][1])) / scaleLon,
+                  (maxlat - float(mapCoord[point][0])) / scaleLat),
+                 (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
+                  (maxlat - float(mapCoord[l][0])) / scaleLat)),
+                stroke="blue", stroke_width=10, fill='none'))
+            l = point
+            k += 1
+        k += 1
+    else:
+        svgGraphACheb.add(svgGraphACheb.circle(center=(
+            const - (maxlon - float(mapCoord[hospid[i]][1])) / scaleLon,
+            (maxlat - float(mapCoord[hospid[i]][0])) / scaleLat), r=15,
+            stroke="red", stroke_width=10))
+        l = pointid
+        while h[k] != hospid[i]:
+            point = h[k]
+            svgGraphACheb.add(svgGraphACheb.polyline((
+                (const - (maxlon - float(mapCoord[point][1])) / scaleLon,
+                 (maxlat - float(mapCoord[point][0])) / scaleLat),
+                (const - (maxlon - float(mapCoord[l][1])) / scaleLon,
+                 (maxlat - float(mapCoord[l][0])) / scaleLat)),
+                stroke="red", stroke_width=5, fill='none'))
+            l = point
+            k += 1
+        k += 1
+svgGraphACheb.save()
